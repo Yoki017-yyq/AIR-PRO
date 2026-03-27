@@ -1,0 +1,296 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>智能馬甲圓形界面高保真原型</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            medicalBlue: "#2E5BFF",
+            paperGreen: "#00C48C",
+            warnOrange: "#FF9500",
+            riskRed: "#FF3B30",
+            softBg: "#F5F7FA"
+          },
+          boxShadow: {
+            glow: "0 0 0 1px rgba(46,91,255,.2), 0 10px 35px rgba(46,91,255,.25)",
+            card: "0 10px 30px rgba(15,23,42,.08)"
+          }
+        }
+      }
+    };
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;800&family=Orbitron:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+  <style>
+    :root {
+      --card: rgba(255,255,255,.88);
+      --stroke: rgba(148,163,184,.25);
+    }
+    body { font-family: "Noto Sans TC", sans-serif; }
+    .num { font-family: "Orbitron", monospace; }
+    .glass {
+      background: var(--card);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255,255,255,.75);
+    }
+    .ring {
+      --size: 170px;
+      --track: #e2e8f0;
+      --value: 60;
+      --color: #2E5BFF;
+      width: var(--size);
+      height: var(--size);
+      border-radius: 9999px;
+      position: relative;
+      background: conic-gradient(var(--color) calc(var(--value) * 1%), var(--track) 0);
+      transition: background .45s ease;
+    }
+    .ring::before {
+      content: "";
+      position: absolute;
+      inset: 12px;
+      border-radius: 9999px;
+      background: linear-gradient(140deg, rgba(255,255,255,.95), rgba(245,247,250,.98));
+      box-shadow: inset 0 0 0 1px rgba(148,163,184,.2);
+    }
+    .ring-content {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      z-index: 1;
+      padding: 16px;
+    }
+    .pulse-alert { animation: pulseAlert 1.2s ease-in-out infinite; }
+    @keyframes pulseAlert {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(255,59,48,.55); }
+      70% { box-shadow: 0 0 0 14px rgba(255,59,48,0); }
+    }
+    .breath {
+      animation: breath 4s ease-in-out infinite;
+    }
+    @keyframes breath {
+      0%,100% { transform: scale(.92); opacity: .7; }
+      50% { transform: scale(1.05); opacity: 1; }
+    }
+  </style>
+</head>
+<body class="min-h-screen bg-slate-900 text-slate-800">
+  <div class="fixed inset-0 -z-10">
+    <img
+      src="https://images.unsplash.com/photo-1559757175-5700dde675bc?auto=format&fit=crop&w=2000&q=80"
+      alt="medical background"
+      class="h-full w-full object-cover opacity-20"
+    />
+    <div class="absolute inset-0 bg-gradient-to-br from-slate-950 via-slate-900/90 to-blue-950/80"></div>
+  </div>
+
+  <main class="mx-auto max-w-7xl p-6 lg:p-10">
+    <header class="glass mb-6 flex flex-wrap items-center justify-between gap-3 rounded-3xl px-5 py-4 shadow-card">
+      <div>
+        <p class="text-xs text-slate-500">Smart Rehab Vest / Circular Interface Prototype</p>
+        <h1 class="text-xl font-bold text-slate-800">智能姿態康復圓形儀表總覽</h1>
+      </div>
+      <div class="flex items-center gap-2 rounded-full bg-slate-100 px-4 py-2">
+        <i class="fa-solid fa-bluetooth-b text-medicalBlue"></i>
+        <span class="text-sm font-medium">馬甲已連接</span>
+        <span class="num rounded-full bg-paperGreen/15 px-2 py-0.5 text-xs text-paperGreen">87%</span>
+      </div>
+    </header>
+
+    <section class="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+      <article class="glass rounded-3xl p-4 shadow-card">
+        <div class="mb-3 flex items-center justify-between">
+          <h2 class="text-sm font-semibold text-slate-600">今日訓練進度</h2>
+          <i class="fa-solid fa-bullseye text-medicalBlue"></i>
+        </div>
+        <div class="ring mx-auto" style="--value: 67; --color: #2E5BFF;">
+          <div class="ring-content">
+            <p class="text-xs text-slate-500">完成次數</p>
+            <p class="num text-3xl font-bold text-slate-900">2/3</p>
+            <p class="text-xs text-paperGreen">再完成一次達標</p>
+          </div>
+        </div>
+      </article>
+
+      <article class="glass rounded-3xl p-4 shadow-card">
+        <div class="mb-3 flex items-center justify-between">
+          <h2 class="text-sm font-semibold text-slate-600">SSA風險指標</h2>
+          <i class="fa-solid fa-wave-square text-warnOrange"></i>
+        </div>
+        <div class="ring mx-auto" style="--value: 78; --color: #FF9500;">
+          <div class="ring-content">
+            <p class="text-xs text-slate-500">實時角度</p>
+            <p class="num text-3xl font-bold text-slate-900">121°</p>
+            <p class="text-xs text-warnOrange">接近預警閾值 120°</p>
+          </div>
+        </div>
+      </article>
+
+      <article class="glass rounded-3xl p-4 shadow-card">
+        <div class="mb-3 flex items-center justify-between">
+          <h2 class="text-sm font-semibold text-slate-600">L4-L5 壓力負載</h2>
+          <i class="fa-solid fa-triangle-exclamation text-riskRed"></i>
+        </div>
+        <div class="ring pulse-alert mx-auto" style="--value: 83; --color: #FF3B30;">
+          <div class="ring-content">
+            <p class="text-xs text-slate-500">Mises 應力</p>
+            <p class="num text-3xl font-bold text-slate-900">1.88</p>
+            <p class="text-xs text-riskRed">MPa / 臨近1.9警示</p>
+          </div>
+        </div>
+      </article>
+
+      <article class="glass rounded-3xl p-4 shadow-card">
+        <div class="mb-3 flex items-center justify-between">
+          <h2 class="text-sm font-semibold text-slate-600">主動支撐比率</h2>
+          <i class="fa-solid fa-dumbbell text-paperGreen"></i>
+        </div>
+        <div class="ring mx-auto" style="--value: 58; --color: #00C48C;">
+          <div class="ring-content">
+            <p class="text-xs text-slate-500">低支撐維持</p>
+            <p class="num text-3xl font-bold text-slate-900">58%</p>
+            <p class="text-xs text-paperGreen">較上週 +9%</p>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <section class="mt-6 grid gap-5 lg:grid-cols-3">
+      <article class="glass rounded-3xl p-5 shadow-glow lg:col-span-2">
+        <div class="mb-5 flex items-center justify-between">
+          <div>
+            <h3 class="text-lg font-bold">坐姿中立位 · 呼吸訓練圓環</h3>
+            <p class="text-sm text-slate-500">吸氣 4s · 保持 2s · 呼氣 4s（第二關維持挑戰）</p>
+          </div>
+          <button class="rounded-full bg-medicalBlue px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700">
+            <i class="fa-solid fa-play mr-1"></i>開始
+          </button>
+        </div>
+        <div class="grid gap-4 md:grid-cols-2">
+          <div class="relative mx-auto grid h-64 w-64 place-items-center">
+            <div class="absolute inset-0 rounded-full bg-medicalBlue/15"></div>
+            <div class="absolute inset-4 rounded-full border-2 border-medicalBlue/30"></div>
+            <div class="absolute inset-9 rounded-full border-2 border-paperGreen/40"></div>
+            <div class="breath absolute inset-[56px] rounded-full bg-gradient-to-br from-medicalBlue to-paperGreen shadow-glow"></div>
+            <div class="relative z-10 text-center text-white">
+              <p class="text-xs">當前階段</p>
+              <p id="phaseText" class="text-xl font-bold">吸氣</p>
+              <p id="countdown" class="num text-4xl">04</p>
+            </div>
+          </div>
+          <div class="space-y-3">
+            <div class="rounded-2xl bg-slate-100 p-3">
+              <p class="text-xs text-slate-500">骨盆傾角</p>
+              <p class="num text-2xl text-slate-900">18.6°</p>
+            </div>
+            <div class="rounded-2xl bg-slate-100 p-3">
+              <p class="text-xs text-slate-500">姿態穩定連續時長</p>
+              <p class="num text-2xl text-slate-900">00:42</p>
+            </div>
+            <div class="rounded-2xl bg-slate-100 p-3">
+              <p class="text-xs text-slate-500">氣囊引導強度</p>
+              <div class="mt-2 h-2 w-full overflow-hidden rounded-full bg-slate-200">
+                <div class="h-full w-[35%] rounded-full bg-gradient-to-r from-paperGreen to-medicalBlue"></div>
+              </div>
+              <p class="mt-1 text-xs text-slate-500">當前：輕柔脈動（L1）</p>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <article class="glass rounded-3xl p-5 shadow-card">
+        <h3 class="mb-4 text-lg font-bold">健康評分環</h3>
+        <div class="ring mx-auto mb-3" style="--size: 220px; --value: 74; --color: #2E5BFF;">
+          <div class="ring-content">
+            <p class="text-xs text-slate-500">本週綜合分</p>
+            <p class="num text-5xl font-bold text-slate-900">74</p>
+            <p class="text-xs text-paperGreen">優於 67% 同齡用戶</p>
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-2 text-xs">
+          <span class="rounded-full bg-slate-100 px-3 py-1">SSA維持率 71%</span>
+          <span class="rounded-full bg-slate-100 px-3 py-1">活動多樣性 68%</span>
+          <span class="rounded-full bg-slate-100 px-3 py-1">恢復質量 79%</span>
+          <span class="rounded-full bg-slate-100 px-3 py-1">肌肉主動性 58%</span>
+        </div>
+      </article>
+    </section>
+
+    <section class="mt-6 glass rounded-3xl p-5 shadow-card">
+      <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <h3 class="text-lg font-bold">圓形快捷控制（可直接映射為開發元件）</h3>
+        <span class="rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-600">共 8 個圓形操作入口</span>
+      </div>
+      <div class="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-8">
+        <button class="group rounded-full bg-white p-4 text-center shadow-card transition hover:-translate-y-1 hover:shadow-glow">
+          <i class="fa-solid fa-chair text-2xl text-medicalBlue"></i>
+          <p class="mt-2 text-xs">坐姿訓練</p>
+        </button>
+        <button class="group rounded-full bg-white p-4 text-center shadow-card transition hover:-translate-y-1 hover:shadow-glow">
+          <i class="fa-solid fa-spa text-2xl text-paperGreen"></i>
+          <p class="mt-2 text-xs">腿後拉伸</p>
+        </button>
+        <button class="group rounded-full bg-white p-4 text-center shadow-card transition hover:-translate-y-1 hover:shadow-glow">
+          <i class="fa-solid fa-user-nurse text-2xl text-warnOrange"></i>
+          <p class="mt-2 text-xs">康復指導</p>
+        </button>
+        <button class="group rounded-full bg-white p-4 text-center shadow-card transition hover:-translate-y-1 hover:shadow-glow">
+          <i class="fa-solid fa-bell text-2xl text-riskRed"></i>
+          <p class="mt-2 text-xs">提醒策略</p>
+        </button>
+        <button class="group rounded-full bg-white p-4 text-center shadow-card transition hover:-translate-y-1 hover:shadow-glow">
+          <i class="fa-solid fa-chart-line text-2xl text-medicalBlue"></i>
+          <p class="mt-2 text-xs">壓力分析</p>
+        </button>
+        <button class="group rounded-full bg-white p-4 text-center shadow-card transition hover:-translate-y-1 hover:shadow-glow">
+          <i class="fa-solid fa-file-pdf text-2xl text-riskRed"></i>
+          <p class="mt-2 text-xs">導出報告</p>
+        </button>
+        <button class="group rounded-full bg-white p-4 text-center shadow-card transition hover:-translate-y-1 hover:shadow-glow">
+          <i class="fa-solid fa-hospital text-2xl text-paperGreen"></i>
+          <p class="mt-2 text-xs">醫生共享</p>
+        </button>
+        <button class="group rounded-full bg-white p-4 text-center shadow-card transition hover:-translate-y-1 hover:shadow-glow">
+          <i class="fa-solid fa-sliders text-2xl text-warnOrange"></i>
+          <p class="mt-2 text-xs">閾值調整</p>
+        </button>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    // 簡單呼吸倒計時原型，可直接替換成實時傳感資料
+    const phaseText = document.getElementById("phaseText");
+    const countdown = document.getElementById("countdown");
+    const phases = [
+      { name: "吸氣", seconds: 4 },
+      { name: "保持", seconds: 2 },
+      { name: "呼氣", seconds: 4 }
+    ];
+    let phaseIndex = 0;
+    let remain = phases[phaseIndex].seconds;
+
+    function tick() {
+      phaseText.textContent = phases[phaseIndex].name;
+      countdown.textContent = String(remain).padStart(2, "0");
+      remain -= 1;
+      if (remain < 0) {
+        phaseIndex = (phaseIndex + 1) % phases.length;
+        remain = phases[phaseIndex].seconds;
+      }
+    }
+
+    tick();
+    setInterval(tick, 1000);
+  </script>
+</body>
+</html>
