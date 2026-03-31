@@ -1,0 +1,864 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Air Pro智能应用</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            // 主色：偏冷醫療藍 + 柔和藍綠
+            medicalBlue: "#2563EB",
+            paperGreen: "#22C55E",
+            // 輔色：低飽和橙色，用於提示而非強烈警告
+            warnOrange: "#FDBA74",
+            softBg: "#F5F7FA"
+          },
+          boxShadow: {
+            glow: "0 0 0 1px rgba(147,197,253,.25), 0 12px 40px rgba(37,99,235,.35)",
+            card: "0 12px 40px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.06)"
+          }
+        }
+      }
+    };
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;800&family=Orbitron:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+  <style>
+    :root {
+      --glass-fill: rgba(255, 255, 255, 0.08);
+      --glass-fill-strong: rgba(255, 255, 255, 0.12);
+      --glass-border: rgba(255, 255, 255, 0.14);
+      --glass-border-hair: rgba(255, 255, 255, 0.22);
+      --chart-fill: rgba(59, 130, 246, 0.12);
+      --phone-midnight: #0b1020;
+    }
+    body { font-family: "Noto Sans TC", sans-serif; }
+    .num { font-family: "Orbitron", monospace; }
+    /* iOS 風毛玻璃卡片 */
+    .glass {
+      background: var(--glass-fill);
+      backdrop-filter: blur(22px) saturate(1.35);
+      -webkit-backdrop-filter: blur(22px) saturate(1.35);
+      border: 1px solid var(--glass-border);
+      box-shadow:
+        0 8px 32px rgba(0, 0, 0, 0.28),
+        inset 0 1px 0 var(--glass-border-hair);
+    }
+    /* 機內淺層嵌套（列表行、小統計塊） */
+    .glass-inset {
+      background: rgba(255, 255, 255, 0.06);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    }
+    /* 手機畫板：深色 + mesh 極光漸變（參考 Gradual flow 方向） */
+    .phone-surface {
+      position: relative;
+      isolation: isolate;
+      background:
+        linear-gradient(168deg, rgba(11, 16, 32, 0.94) 0%, rgba(15, 23, 42, 0.92) 42%, rgba(30, 58, 138, 0.45) 100%);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      box-shadow:
+        0 40px 120px rgba(0, 0, 0, 0.55),
+        inset 0 1px 0 rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(26px) saturate(1.2);
+      -webkit-backdrop-filter: blur(26px) saturate(1.2);
+      overflow: hidden;
+    }
+    .phone-surface::before {
+      content: "";
+      position: absolute;
+      inset: -45%;
+      z-index: 0;
+      pointer-events: none;
+      background:
+        radial-gradient(ellipse 75% 55% at 18% 22%, rgba(99, 102, 241, 0.28), transparent 52%),
+        radial-gradient(ellipse 65% 50% at 88% 12%, rgba(56, 189, 248, 0.22), transparent 48%),
+        radial-gradient(ellipse 85% 65% at 55% 95%, rgba(37, 99, 235, 0.32), transparent 55%);
+      opacity: 0.95;
+    }
+    /* 細微 + 網格紋理（數據感，低對比） */
+    .phone-surface::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      opacity: 0.12;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath fill='none' stroke='%23ffffff' stroke-opacity='0.35' stroke-width='0.6' d='M12 4v16M4 12h16'/%3E%3C/svg%3E");
+      background-size: 24px 24px;
+      mask-image: radial-gradient(ellipse 85% 70% at 50% 40%, black 15%, transparent 70%);
+    }
+    .phone-surface > * { position: relative; z-index: 1; }
+    .safe-top { padding-top: 18px; }
+    .safe-bottom { padding-bottom: 18px; }
+    /* === Component: Ring === */
+    .ring {
+      --size: 170px;
+      --track: rgba(255, 255, 255, 0.12);
+      --value: 60;
+      --color: #3b82f6;
+      width: var(--size);
+      height: var(--size);
+      border-radius: 9999px;
+      position: relative;
+      background: conic-gradient(var(--color) calc(var(--value) * 1%), var(--track) 0);
+      transition: background .45s ease;
+      box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.1);
+    }
+    .ring::before {
+      content: "";
+      position: absolute;
+      inset: 12px;
+      border-radius: 9999px;
+      background: linear-gradient(150deg, rgba(15, 23, 42, 0.92), rgba(30, 41, 59, 0.88));
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+    }
+    .ring-content {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      z-index: 1;
+      padding: 16px;
+      color: rgba(255, 255, 255, 0.92);
+    }
+    .pulse-alert { animation: pulseAlert 1.2s ease-in-out infinite; }
+    @keyframes pulseAlert {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(56, 189, 248, 0.45); }
+      70% { box-shadow: 0 0 0 14px rgba(56, 189, 248, 0); }
+    }
+    .breath {
+      animation: breath 4s ease-in-out infinite;
+    }
+    @keyframes breath {
+      0%,100% { transform: scale(.92); opacity: .7; }
+      50% { transform: scale(1.05); opacity: 1; }
+    }
+
+    /* Mobile multi-screen transitions */
+    .screen {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      opacity: 0;
+      transform: translateX(10px);
+      pointer-events: none;
+      transition: opacity 240ms ease, transform 240ms ease;
+    }
+    .screen.active {
+      opacity: 1;
+      transform: translateX(0);
+      pointer-events: auto;
+    }
+    .content-scroll {
+      overflow: auto;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+    }
+    .content-scroll::-webkit-scrollbar { display: none; }
+    .tabbar {
+      box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.35);
+      border-top: 1px solid rgba(255, 255, 255, 0.12);
+      background: rgba(15, 23, 42, 0.45);
+      backdrop-filter: blur(24px) saturate(1.35);
+      -webkit-backdrop-filter: blur(24px) saturate(1.35);
+    }
+    .tab-indicator {
+      width: 33.3333%;
+      transition: transform 260ms cubic-bezier(.2,.9,.2,1);
+    }
+    /* === Component: ChartCard === 圖表區毛玻璃 */
+    .chart-surface {
+      background: linear-gradient(165deg, rgba(59, 130, 246, 0.14), rgba(255, 255, 255, 0.05));
+      backdrop-filter: blur(18px) saturate(1.25);
+      -webkit-backdrop-filter: blur(18px) saturate(1.25);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.08),
+        0 6px 24px rgba(0, 0, 0, 0.2);
+    }
+    .grid-noise {
+      background-image:
+        radial-gradient(circle at 1px 1px, rgba(147, 197, 253, 0.25) 1px, transparent 0),
+        linear-gradient(0deg, rgba(30, 58, 138, 0.15), rgba(30, 58, 138, 0.15));
+      background-size: 14px 14px, 100% 100%;
+      background-position: 0 0, 0 0;
+      opacity: 0.45;
+      mask-image: radial-gradient(ellipse at center, rgba(0,0,0,.95), rgba(0,0,0,.25) 60%, rgba(0,0,0,0) 100%);
+    }
+    /* 時間軸槽：深色半透明槽，與機內對比 */
+    .timeline-well {
+      background: rgba(0, 0, 0, 0.22);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+  </style>
+</head>
+<body class="min-h-screen bg-[#070a14] text-slate-200 antialiased">
+  <div class="fixed inset-0 -z-10 overflow-hidden">
+    <div class="absolute inset-0 bg-[#070a14]"></div>
+    <div
+      class="absolute -left-1/4 -top-1/4 h-[70%] w-[70%] rounded-full opacity-50 blur-[100px]"
+      style="background: radial-gradient(circle, rgba(99,102,241,0.35) 0%, transparent 65%);"
+    ></div>
+    <div
+      class="absolute -right-1/4 top-1/3 h-[55%] w-[55%] rounded-full opacity-45 blur-[90px]"
+      style="background: radial-gradient(circle, rgba(56,189,248,0.28) 0%, transparent 65%);"
+    ></div>
+    <div
+      class="absolute bottom-0 left-1/3 h-[45%] w-[80%] -translate-x-1/2 opacity-40 blur-[100px]"
+      style="background: radial-gradient(circle, rgba(37,99,235,0.35) 0%, transparent 60%);"
+    ></div>
+    <div class="absolute inset-0 bg-gradient-to-b from-transparent via-[#070a14]/20 to-[#070a14]/90"></div>
+  </div>
+
+  <main class="mx-auto flex min-h-screen max-w-7xl items-center justify-center p-6">
+    <!-- Phone frame (390x844) -->
+    <div class="relative h-[844px] w-[390px] overflow-hidden rounded-[44px] phone-surface">
+      <!-- status bar -->
+      <div class="safe-top px-5">
+        <div class="flex items-center justify-between text-[11px] text-white/75">
+          <span class="num tracking-wide">9:41</span>
+          <div class="flex items-center gap-2">
+            <i class="fa-solid fa-signal"></i>
+            <i class="fa-solid fa-wifi"></i>
+            <span class="inline-flex items-center gap-1 rounded-full bg-cyan-500/15 px-2 py-0.5 text-cyan-300">
+              <i class="fa-solid fa-battery-three-quarters text-[10px]"></i><span class="num text-[10px]">87%</span>
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- screens container -->
+      <div class="relative mt-3 h-[770px]">
+        <!-- Screen: Training -->
+        <section id="screen-training" class="screen active">
+          <div class="px-5">
+            <div class="flex items-center justify-between">
+              <div>
+                <p class="text-[11px] text-white/55">训练 · Smart Rehab Vest</p>
+                <h1 class="text-lg font-extrabold tracking-tight text-white">智能姿态引导</h1>
+              </div>
+              <div class="flex items-center gap-2 rounded-full glass-inset px-3 py-2 text-xs">
+                <i class="fa-solid fa-bluetooth-b text-medicalBlue"></i>
+                <span class="font-semibold">已连接 | 70%</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="content-scroll mt-4 flex-1 px-5 pb-28">
+            <!-- hero card -->
+            <article class="glass relative overflow-hidden rounded-3xl p-4 shadow-card">
+              <div class="absolute inset-0 opacity-20">
+                <div class="grid-noise absolute inset-0"></div>
+              </div>
+              <div class="relative z-10">
+                <div class="flex items-start justify-between gap-3">
+                  <div>
+                    <p class="text-xs text-white/55">实时腰椎负荷概览</p>
+                    <p class="text-sm font-semibold text-white/95">L1-L5 压力 · SSA角度 · 气囊状态</p>
+                  </div>
+                  <span class="rounded-full bg-sky-500/20 px-2 py-1 text-xs font-semibold text-sky-200">
+                    SSA <span class="num">121°</span>
+                  </span>
+                </div>
+
+                <div class="mt-4 grid grid-cols-3 gap-3">
+                  <!-- Ring: 今日進度 -->
+                  <div
+                    class="ring js-ring mx-auto"
+                    data-label="今日进度"
+                    data-value="0.67"
+                    data-color="blue"
+                    style="--size: 112px; --value: 67; --color: #2563EB;"
+                  >
+                    <div class="ring-content">
+                      <p class="text-[10px] text-white/55">今日</p>
+                      <p class="num text-xl font-bold text-white">2/3</p>
+                      <p class="text-[10px] text-cyan-300">进度</p>
+                    </div>
+                  </div>
+
+                  <!-- Ring: 主動支撐 -->
+                  <div
+                    class="ring js-ring mx-auto"
+                    data-label="主动支撑"
+                    data-value="0.58"
+                    data-color="green"
+                    style="--size: 112px; --value: 58; --color: #22d3ee;"
+                  >
+                    <div class="ring-content">
+                      <p class="text-[10px] text-white/55">主动</p>
+                      <p class="num text-xl font-bold text-white">58%</p>
+                      <p class="text-[10px] text-cyan-300">支撑</p>
+                    </div>
+                  </div>
+
+                  <!-- Ring: L4-5 壓力 -->
+                  <div
+                    class="ring js-ring pulse-alert mx-auto"
+                    data-label="L4-5 压力"
+                    data-value="0.83"
+                    data-color="accent"
+                    style="--size: 112px; --value: 83; --color: #2563EB;"
+                  >
+                    <div class="ring-content">
+                      <p class="text-[10px] text-white/55">L4-5</p>
+                      <p class="num text-xl font-bold text-white">1.88</p>
+                      <p class="text-[10px] text-sky-300">MPa</p>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- airbags -->
+                <div class="mt-4">
+                  <div class="flex items-center justify-between">
+                    <p class="text-xs font-semibold text-white/65">气囊充气状态（5區）</p>
+                    <button class="rounded-full glass-inset px-3 py-1 text-xs text-white/80">
+                      <i class="fa-solid fa-sliders mr-1"></i>支撑模式
+                    </button>
+                  </div>
+                  <div class="mt-2 grid grid-cols-5 gap-2">
+                    <div class="h-12 overflow-hidden rounded-2xl glass-inset">
+                      <div class="h-[35%] w-full bg-gradient-to-t from-blue-700 to-cyan-400/90"></div>
+                    </div>
+                    <div class="h-12 overflow-hidden rounded-2xl glass-inset">
+                      <div class="h-[55%] w-full bg-gradient-to-t from-blue-700 to-cyan-400/90"></div>
+                    </div>
+                    <div class="h-12 overflow-hidden rounded-2xl glass-inset">
+                      <div class="h-[70%] w-full bg-gradient-to-t from-indigo-600 via-blue-600 to-cyan-400"></div>
+                    </div>
+                    <div class="h-12 overflow-hidden rounded-2xl glass-inset">
+                      <div class="h-[45%] w-full bg-gradient-to-t from-blue-700 to-cyan-400/90"></div>
+                    </div>
+                    <div class="h-12 overflow-hidden rounded-2xl glass-inset">
+                      <div class="h-[28%] w-full bg-gradient-to-t from-blue-700 to-cyan-400/90"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </article>
+
+            <!-- mode pills -->
+            <div class="mt-4 flex gap-2 overflow-auto pb-1">
+              <button class="shrink-0 rounded-full bg-medicalBlue px-4 py-2 text-xs font-semibold text-white">坐姿中立位</button>
+              <button class="shrink-0 rounded-full glass-inset px-4 py-2 text-xs font-semibold text-white/80">背部肌训</button>
+              <button class="shrink-0 rounded-full glass-inset px-4 py-2 text-xs font-semibold text-white/80">腿后拉伸</button>
+              <button class="shrink-0 rounded-full glass-inset px-4 py-2 text-xs font-semibold text-white/80">核心训练</button>
+            </div>
+
+            <!-- recommendation -->
+            <article class="mt-4 rounded-3xl p-[1px] shadow-card" style="background: linear-gradient(135deg, rgba(59,130,246,0.55), rgba(56,189,248,0.35), rgba(99,102,241,0.45));">
+              <div class="rounded-[22px] glass p-4">
+                <div class="flex items-start gap-3">
+                  <div class="mt-0.5 grid h-9 w-9 place-items-center rounded-2xl bg-sky-500/15 text-sky-200">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i>
+                  </div>
+                  <div class="flex-1">
+                    <p class="text-xs font-semibold text-white/80">今日推荐</p>
+                    <p class="text-sm text-white/95">检测到你昨日坐姿前屈过久，建议优先完成<span class="font-semibold">坐姿中立位训练</span>。</p>
+                    <div class="mt-3 flex items-center justify-between">
+                      <span class="text-xs text-white/55">预计 5-15 分钟</span>
+                      <button class="rounded-full border border-white/20 bg-white/12 px-4 py-2 text-xs font-semibold text-white shadow-[0_0_24px_rgba(59,130,246,0.25)] backdrop-blur-md">
+                        一键开始
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </article>
+
+            <!-- breathing ring card -->
+            <article class="mt-4 glass rounded-3xl p-4 shadow-card">
+              <div class="flex items-center justify-between">
+                <div>
+                  <p class="text-xs text-white/55">第二关 · 维持挑战</p>
+                  <p class="text-sm font-bold text-white">呼吸节奏圆环</p>
+                </div>
+                <button id="breathToggle" class="rounded-full border border-white/20 bg-gradient-to-r from-blue-600 to-cyan-500 px-3 py-2 text-xs font-semibold text-white shadow-[0_0_18px_rgba(59,130,246,0.35)]">
+                  <i class="fa-solid fa-play mr-1"></i>开始
+                </button>
+              </div>
+              <div class="mt-3 grid grid-cols-2 gap-3">
+                <div class="relative grid h-44 w-44 place-items-center justify-self-center">
+                  <div class="absolute inset-0 rounded-full bg-medicalBlue/10"></div>
+                  <div class="absolute inset-3 rounded-full border-2 border-medicalBlue/25"></div>
+                  <div class="absolute inset-7 rounded-full border-2 border-cyan-400/35"></div>
+                  <div id="breathCore" class="breath absolute inset-[40px] rounded-full bg-gradient-to-br from-blue-600 via-cyan-400 to-indigo-500 shadow-glow"></div>
+                  <div class="relative z-10 text-center text-white">
+                    <p class="text-[11px]">当前阶段</p>
+                    <p id="phaseText" class="text-lg font-bold">吸气</p>
+                    <p id="countdown" class="num text-3xl">04</p>
+                  </div>
+                </div>
+                <div class="space-y-2">
+                  <div class="rounded-2xl glass-inset p-3">
+                    <p class="text-[11px] text-white/55">骨盆倾角</p>
+                    <p class="num text-xl text-white">18.6°</p>
+                  </div>
+                  <div class="rounded-2xl glass-inset p-3">
+                    <p class="text-[11px] text-white/55">稳定连续时长</p>
+                    <p class="num text-xl text-white">00:42</p>
+                  </div>
+                  <div class="rounded-2xl glass-inset p-3">
+                    <p class="text-[11px] text-white/55">引导强度</p>
+                    <div class="mt-2 h-2 w-full overflow-hidden rounded-full bg-white/10">
+                      <div class="h-full w-[35%] rounded-full bg-gradient-to-r from-cyan-400/90 to-blue-600"></div>
+                    </div>
+                    <p class="mt-1 text-[11px] text-white/55">L1 轻柔脉动</p>
+                  </div>
+                </div>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <!-- Screen: Monitor -->
+        <section id="screen-monitor" class="screen">
+          <div class="px-5">
+            <div class="flex items-center justify-between">
+              <div>
+                <p class="text-[11px] text-white/55">检测 · 实时姿态</p>
+                <h1 class="text-lg font-extrabold tracking-tight text-white">动态习惯检测</h1>
+              </div>
+              <span class="rounded-full bg-sky-500/15 px-3 py-2 text-xs font-semibold text-sky-300">
+                <i class="fa-solid fa-circle-exclamation mr-1"></i>预计
+              </span>
+            </div>
+          </div>
+
+          <div class="content-scroll mt-4 flex-1 px-5 pb-28">
+            <!-- ChartCard: 24h Timeline 占位 -->
+            <article class="glass chart-card-timeline rounded-3xl p-4 shadow-card" data-chart-type="timeline">
+              <div class="flex items-center justify-between">
+                <div>
+                  <p class="text-xs text-white/55">气囊状态</p>
+                  <p class="text-sm font-bold text-white">! L4-5 应力升高</p>
+                </div>
+                <button class="rounded-full bg-gradient-to-r from-sky-500 to-blue-600 px-3 py-2 text-xs font-semibold text-white shadow-[0_0_20px_rgba(56,189,248,0.35)]">
+                  一键切换支撑
+                </button>
+              </div>
+              <div class="mt-3 grid grid-cols-2 gap-3">
+                <div class="chart-surface relative overflow-hidden rounded-3xl p-3">
+                  <div class="absolute inset-0 opacity-60">
+                    <img
+                      class="h-full w-full object-cover"
+                      alt="chair"
+                      src="https://images.unsplash.com/photo-1524758631624-e2822e304c36?auto=format&fit=crop&w=900&q=80"
+                    />
+                    <div class="absolute inset-0 bg-gradient-to-br from-blue-950/80 via-slate-950/55 to-cyan-950/30"></div>
+                  </div>
+                  <div class="relative">
+                    <p class="text-xs font-semibold text-white/80">人体工学椅视角</p>
+                    <p class="mt-1 text-[11px] text-white/65">骨盆前倾角度50-55，后倾15-30为正常值</p>
+                    <div class="mt-3 rounded-2xl glass-inset p-3">
+                      <div class="flex items-center justify-between">
+                        <span class="text-[11px] text-white/55">骨盆倾斜</span>
+                        <span class="num text-sm font-bold text-white">22.1°</span>
+                      </div>
+                      <div class="mt-2 h-2 w-full overflow-hidden rounded-full bg-white/10">
+                        <div class="h-full w-[72%] rounded-full bg-gradient-to-r from-blue-900/40 via-blue-500/80 to-cyan-300/90"></div>
+                      </div>
+                      <div class="mt-2 flex items-center justify-between text-[10px] text-white/55">
+                        <span>低负荷</span><span>偏离</span><span>高风险</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="chart-surface rounded-3xl p-3">
+                  <p class="text-xs font-semibold text-white/80">腰椎压力云图</p>
+                  <p class="mt-1 text-[11px] text-white/65">L3-4至L5-S1节段的峰值在 2.75–2.85 MPa 左右</p>
+                  <div class="mt-3 grid gap-2">
+                    <div class="h-9 rounded-2xl glass-inset p-2">
+                      <div class="flex items-center justify-between">
+                        <span class="text-[11px] text-white/55">L4-L5</span>
+                        <span class="num text-[11px] font-bold text-sky-300">1.88 MPa</span>
+                      </div>
+                      <div class="mt-1 h-2 w-full overflow-hidden rounded-full bg-white/10">
+                        <div class="h-full w-[86%] rounded-full bg-gradient-to-r from-blue-800 via-cyan-500/80 to-sky-300"></div>
+                      </div>
+                    </div>
+                    <div class="h-9 rounded-2xl glass-inset p-2">
+                      <div class="flex items-center justify-between">
+                        <span class="text-[11px] text-white/55">L5-S1</span>
+                        <span class="num text-[11px] font-bold text-sky-200">2.06 MPa</span>
+                      </div>
+                      <div class="mt-1 h-2 w-full overflow-hidden rounded-full bg-white/10">
+                        <div class="h-full w-[72%] rounded-full bg-gradient-to-r from-blue-800 via-cyan-500/80 to-sky-300"></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </article>
+
+            <!-- 24h timeline placeholder -->
+            <article class="mt-4 glass rounded-3xl p-4 shadow-card">
+              <div class="flex items-center justify-between">
+                <div>
+                  <p class="text-xs text-white/55">久坐风险</p>
+                  <p class="text-sm font-bold text-white">24小时时间轴</p>
+                </div>
+                <span class="rounded-full glass-inset px-3 py-1 text-xs text-white/80">
+                  静态坐姿 <span class="num font-bold">3h 10m</span>
+                </span>
+              </div>
+              <div class="mt-3 overflow-hidden rounded-3xl timeline-well p-3">
+                <div class="flex gap-1 overflow-x-auto pb-2">
+                  <!-- TimelineBar: 顏色按風險分級，已壓低飽和度 -->
+                  <div class="h-12 w-7 shrink-0 rounded-xl bg-blue-200/80"></div>
+                  <div class="h-12 w-7 shrink-0 rounded-xl bg-blue-200/80"></div>
+                  <div class="h-12 w-7 shrink-0 rounded-xl bg-cyan-500/30"></div>
+                  <div class="h-12 w-7 shrink-0 rounded-xl bg-cyan-500/30"></div>
+                  <div class="h-12 w-7 shrink-0 rounded-xl bg-sky-500/35"></div>
+                  <div class="h-12 w-7 shrink-0 rounded-xl bg-sky-500/35"></div>
+                  <div class="h-12 w-7 shrink-0 rounded-xl bg-blue-500/40"></div>
+                  <div class="h-12 w-7 shrink-0 rounded-xl bg-sky-500/35"></div>
+                  <div class="h-12 w-7 shrink-0 rounded-xl bg-cyan-500/30"></div>
+                  <div class="h-12 w-7 shrink-0 rounded-xl bg-blue-200/80"></div>
+                  <div class="h-12 w-7 shrink-0 rounded-xl bg-blue-200/80"></div>
+                  <div class="h-12 w-7 shrink-0 rounded-xl bg-blue-200/80"></div>
+                  <div class="h-12 w-7 shrink-0 rounded-xl bg-cyan-500/30"></div>
+                  <div class="h-12 w-7 shrink-0 rounded-xl bg-sky-500/35"></div>
+                  <div class="h-12 w-7 shrink-0 rounded-xl bg-blue-500/40"></div>
+                  <div class="h-12 w-7 shrink-0 rounded-xl bg-blue-500/40"></div>
+                </div>
+                <div class="mt-2 flex items-center justify-between text-[10px] text-white/55">
+                  <span>00:00</span><span>06:00</span><span>12:00</span><span>18:00</span><span>24:00</span>
+                </div>
+                <div class="mt-3 flex items-center gap-2 text-[11px] text-white/65">
+                  <span class="inline-flex items-center gap-1"><span class="h-2 w-2 rounded-full bg-blue-300"></span>站立/低负荷</span>
+                  <span class="inline-flex items-center gap-1"><span class="h-2 w-2 rounded-full bg-cyan-400/70"></span>坐姿中立</span>
+                  <span class="inline-flex items-center gap-1"><span class="h-2 w-2 rounded-full bg-sky-400/80"></span>静态坐姿</span>
+                  <span class="inline-flex items-center gap-1"><span class="h-2 w-2 rounded-full bg-blue-400"></span>高风险</span>
+                </div>
+              </div>
+            </article>
+
+            <!-- reminder levels -->
+            <article class="mt-4 glass rounded-3xl p-4 shadow-card">
+              <p class="text-xs text-white/55">智能提醒（L1/L2/L3）</p>
+              <p class="text-sm font-bold text-white">分層干預策略</p>
+              <div class="mt-3 space-y-2">
+                <div class="rounded-2xl glass-inset p-3">
+                  <div class="flex items-center justify-between">
+                    <span class="text-xs font-semibold text-white/80">L1 微调提醒</span>
+                    <span class="rounded-full bg-cyan-500/15 px-2 py-0.5 text-[11px] font-semibold text-cyan-300">已啟用</span>
+                  </div>
+                  <p class="mt-1 text-[11px] text-white/65">静态坐姿 15 分钟或 SSA 下降 5° → 轻柔脉动</p>
+                </div>
+                <div class="rounded-2xl glass-inset p-3">
+                  <div class="flex items-center justify-between">
+                    <span class="text-xs font-semibold text-white/80">L2 主动干预</span>
+                    <span class="rounded-full bg-sky-500/20 px-2 py-0.5 text-[11px] font-semibold text-sky-200">建议</span>
+                  </div>
+                  <p class="mt-1 text-[11px] text-white/65">静态坐姿 30 分钟或 SSA&lt;130° 10 分钟 → 全屏引导</p>
+                </div>
+                <div class="rounded-2xl glass-inset p-3">
+                  <div class="flex items-center justify-between">
+                    <span class="text-xs font-semibold text-white/80">L3 強制休息</span>
+                    <span class="rounded-full bg-sky-500/15 px-2 py-0.5 text-[11px] font-semibold text-sky-300">保护</span>
+                  </div>
+                  <p class="mt-1 text-[11px] text-white/65">静态坐姿45 分钟或 L4-5 应力持续超标 → 手机振动模式</p>
+                </div>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <!-- Screen: Analysis -->
+        <section id="screen-analysis" class="screen">
+          <div class="px-5">
+            <div class="flex items-center justify-between">
+              <div>
+                <p class="text-[11px] text-white/55">分析 · 周/月度总览</p>
+                <h1 class="text-lg font-extrabold tracking-tight text-white">压力数据报表</h1>
+              </div>
+              <button class="rounded-full bg-gradient-to-r from-blue-600 to-cyan-500 px-3 py-2 text-xs font-semibold text-white shadow-[0_0_20px_rgba(59,130,246,0.4)]">
+                <i class="fa-solid fa-file-arrow-down mr-1"></i>PDF
+              </button>
+            </div>
+          </div>
+
+          <div class="content-scroll mt-4 flex-1 px-5 pb-28">
+            <!-- score ring -->
+            <article class="glass rounded-3xl p-4 shadow-card">
+              <div class="flex items-center justify-between">
+                <div>
+                  <p class="text-xs text-white/55">健康评分环</p>
+                  <p class="text-sm font-bold text-white">你的腰椎负荷管理</p>
+                </div>
+                <span class="rounded-full bg-cyan-500/15 px-3 py-1 text-xs font-semibold text-cyan-300">
+                  ↑ 本週 +6
+                </span>
+              </div>
+              <div class="mt-3 grid grid-cols-2 gap-3">
+                <div class="ring mx-auto" style="--size: 170px; --value: 74; --color: #2E5BFF;">
+                  <div class="ring-content">
+                    <p class="text-xs text-white/55">本周综合评分</p>
+                    <p class="num text-5xl font-bold text-white">74</p>
+                    <p class="text-xs text-cyan-300">优于 67%</p>
+                  </div>
+                </div>
+                <div class="chart-surface relative overflow-hidden rounded-3xl p-3">
+                  <p class="text-xs font-semibold text-white/80">四维雷达图</p>
+                  <p class="mt-1 text-[11px] text-white/65">姿态/主动性/多样性/恢复</p>
+                  <svg class="mt-2 h-28 w-full" viewBox="0 0 200 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <g opacity="0.55" stroke="rgba(255,255,255,.22)">
+                      <path d="M100 10 L170 45 L145 105 L55 105 L30 45 Z" />
+                      <path d="M100 28 L152 52 L134 96 L66 96 L48 52 Z" />
+                      <path d="M100 46 L134 60 L123 88 L77 88 L66 60 Z" />
+                    </g>
+                    <path d="M100 28 L158 58 L128 96 L78 88 L52 54 Z"
+                          fill="rgba(56,189,248,.22)" stroke="rgba(147,197,253,.95)" stroke-width="2"/>
+                    <circle cx="100" cy="28" r="3" fill="rgba(186,230,253,.95)"/>
+                    <circle cx="158" cy="58" r="3" fill="rgba(186,230,253,.95)"/>
+                    <circle cx="128" cy="96" r="3" fill="rgba(186,230,253,.95)"/>
+                    <circle cx="78" cy="88" r="3" fill="rgba(186,230,253,.95)"/>
+                    <circle cx="52" cy="54" r="3" fill="rgba(186,230,253,.95)"/>
+                  </svg>
+                  <div class="mt-2 grid grid-cols-2 gap-1 text-[10px] text-white/65">
+                    <span class="rounded-full glass-inset px-2 py-1">SSA维持率 71%</span>
+                    <span class="rounded-full glass-inset px-2 py-1">主动性 58%</span>
+                    <span class="rounded-full glass-inset px-2 py-1">多样性 68%</span>
+                    <span class="rounded-full glass-inset px-2 py-1">恢复 79%</span>
+                  </div>
+                </div>
+              </div>
+            </article>
+
+            <!-- biomechanics charts placeholders -->
+            <article class="mt-4 glass rounded-3xl p-4 shadow-card">
+              <p class="text-xs text-white/55">脊柱生物力学报告</p>
+              <p class="text-sm font-bold text-white">专业可视化</p>
+              <div class="mt-3 grid gap-3">
+                <div class="chart-surface rounded-3xl p-3">
+                  <div class="flex items-center justify-between">
+                    <p class="text-xs font-semibold text-white/80">SSA 趋势折现</p>
+                    <span class="text-[11px] text-white/55">参考区间：122.7° / 125.1°</span>
+                  </div>
+                  <svg class="mt-2 h-24 w-full" viewBox="0 0 320 90" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                      <linearGradient id="ssaFill" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stop-color="rgba(56,189,248,0.35)"/>
+                        <stop offset="100%" stop-color="rgba(56,189,248,0)"/>
+                      </linearGradient>
+                    </defs>
+                    <path d="M10 60 C 60 20, 90 25, 130 44 C 170 64, 210 58, 240 40 C 270 24, 300 28, 310 22 L 310 90 L 10 90 Z"
+                          fill="url(#ssaFill)"/>
+                    <path d="M10 60 C 60 20, 90 25, 130 44 C 170 64, 210 58, 240 40 C 270 24, 300 28, 310 22"
+                          stroke="rgba(147,197,253,.95)" stroke-width="2.5" stroke-linecap="round" filter="drop-shadow(0 0 6px rgba(56,189,248,.55))"/>
+                    <path d="M10 64 C 60 26, 92 30, 130 50 C 170 72, 212 66, 240 46 C 270 30, 300 34, 310 28"
+                          stroke="rgba(125,211,252,.45)" stroke-width="1.5" stroke-linecap="round" stroke-dasharray="5 5"/>
+                    <rect x="0" y="0" width="320" height="90" rx="14" fill="transparent" stroke="rgba(255,255,255,.12)"/>
+                  </svg>
+                  <div class="mt-2 flex items-center justify-between text-[11px] text-white/65">
+                    <span>本周平均 <span class="num font-bold text-white">123.6°</span></span>
+                    <span class="text-sky-300">低於 120° 占比 <span class="num font-bold">12%</span></span>
+                  </div>
+                </div>
+
+                <div class="chart-surface rounded-3xl p-3">
+                  <div class="flex items-center justify-between">
+                    <p class="text-xs font-semibold text-white/80">L1-L5 压力热力图</p>
+                    <span class="text-[11px] text-white/55">数据蓝色为高风险</span>
+                  </div>
+                  <div class="mt-3 grid grid-cols-5 gap-2">
+                    <div class="rounded-2xl glass-inset p-2 text-center">
+                      <p class="text-[10px] text-white/55">L1</p>
+                      <div class="mt-2 h-10 rounded-xl bg-gradient-to-b from-blue-800 via-cyan-500/80 to-sky-300"></div>
+                      <p class="mt-2 num text-[11px] font-bold text-white">0.62</p>
+                    </div>
+                    <div class="rounded-2xl glass-inset p-2 text-center">
+                      <p class="text-[10px] text-white/55">L2</p>
+                      <div class="mt-2 h-10 rounded-xl bg-gradient-to-b from-blue-800 via-cyan-500/80 to-sky-300"></div>
+                      <p class="mt-2 num text-[11px] font-bold text-white">0.74</p>
+                    </div>
+                    <div class="rounded-2xl glass-inset p-2 text-center">
+                      <p class="text-[10px] text-white/55">L3</p>
+                      <div class="mt-2 h-10 rounded-xl bg-gradient-to-b from-blue-700 via-sky-400/90 to-cyan-200"></div>
+                      <p class="mt-2 num text-[11px] font-bold text-white">1.12</p>
+                    </div>
+                    <div class="rounded-2xl glass-inset p-2 text-center">
+                      <p class="text-[10px] text-white/55">L4</p>
+                      <div class="mt-2 h-10 rounded-xl bg-gradient-to-b from-blue-700 via-sky-400/90 to-cyan-200"></div>
+                      <p class="mt-2 num text-[11px] font-bold text-white">1.46</p>
+                    </div>
+                    <div class="rounded-2xl glass-inset p-2 text-center">
+                      <p class="text-[10px] text-white/55">L5</p>
+                      <div class="mt-2 h-10 rounded-xl bg-gradient-to-b from-indigo-600 via-blue-500 to-cyan-300"></div>
+                      <p class="mt-2 num text-[11px] font-bold text-sky-300">1.88</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </article>
+
+            <!-- advice cards -->
+            <article class="mt-4 glass rounded-3xl p-4 shadow-card">
+              <p class="text-xs text-white/55">智能建议引擎</p>
+              <p class="text-sm font-bold text-white">個人化康复定制</p>
+              <div class="mt-3 space-y-2">
+                <div class="rounded-3xl border border-sky-400/25 bg-sky-500/15 p-3">
+                  <p class="text-xs font-bold text-sky-300">即时风险预警</p>
+                  <p class="mt-1 text-[11px] text-white/80">连续 3 天 SSA&lt;120°，与功能障碍加重风险相关。</p>
+                  <div class="mt-2 flex justify-end">
+                    <button class="rounded-full bg-gradient-to-r from-sky-500 to-blue-600 px-3 py-2 text-xs font-semibold text-white shadow-[0_0_20px_rgba(56,189,248,0.35)]">
+                      立即预约评估
+                    </button>
+                  </div>
+                </div>
+                <div class="rounded-3xl border border-blue-400/25 bg-blue-600/15 p-3">
+                  <p class="text-xs font-bold text-blue-200">训练方案调整</p>
+                  <p class="mt-1 text-[11px] text-white/80">L4-5 压力峰值集中于下午，建议 13:00 新增「坐姿重置/站立活动」提醒。</p>
+                </div>
+                <div class="rounded-3xl border border-cyan-400/25 bg-cyan-500/10 p-3">
+                  <p class="text-xs font-bold text-cyan-300">长期趋势建议</p>
+                  <p class="mt-1 text-[11px] text-white/80">过去 4 周主动支撑比例从 35% 提升至 58%，可尝试試「无支撑挑战日」。</p>
+                </div>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <!-- Bottom tabbar -->
+        <nav class="tabbar safe-bottom absolute bottom-0 left-0 right-0 px-4 pt-2">
+          <div class="relative mx-auto max-w-[360px] rounded-2xl border border-white/10 bg-white/10 px-2 py-2 backdrop-blur-xl">
+            <div class="absolute left-0 top-0 h-1 w-full px-2">
+              <div class="tab-indicator h-1 rounded-full bg-gradient-to-r from-blue-500 via-cyan-400 to-indigo-400 shadow-[0_0_12px_rgba(56,189,248,0.6)]" id="tabIndicator"></div>
+            </div>
+            <div class="grid grid-cols-3">
+              <button data-tab="training" class="tab-btn flex flex-col items-center gap-1 rounded-2xl px-3 py-2 text-white">
+                <i class="fa-solid fa-bullseye text-lg"></i>
+                <span class="text-[11px] font-semibold">训练</span>
+              </button>
+              <button data-tab="monitor" class="tab-btn flex flex-col items-center gap-1 rounded-2xl px-3 py-2 text-white/55">
+                <i class="fa-solid fa-gauge-high text-lg"></i>
+                <span class="text-[11px] font-semibold">检测</span>
+              </button>
+              <button data-tab="analysis" class="tab-btn flex flex-col items-center gap-1 rounded-2xl px-3 py-2 text-white/55">
+                <i class="fa-solid fa-chart-pie text-lg"></i>
+                <span class="text-[11px] font-semibold">分析</span>
+              </button>
+            </div>
+          </div>
+        </nav>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    // Breath timer prototype (可替換成實時傳感資料)
+    const phaseText = document.getElementById("phaseText");
+    const countdown = document.getElementById("countdown");
+    const breathCore = document.getElementById("breathCore");
+    const breathToggle = document.getElementById("breathToggle");
+
+    const phases = [
+      { name: "吸气", seconds: 4 },
+      { name: "保持", seconds: 2 },
+      { name: "呼气", seconds: 4 }
+    ];
+
+    let phaseIndex = 0;
+    let remain = phases[phaseIndex].seconds;
+    let timer = null;
+
+    function renderBreath() {
+      if (!phaseText || !countdown) return;
+      phaseText.textContent = phases[phaseIndex].name;
+      countdown.textContent = String(remain).padStart(2, "0");
+
+      // small visual nuance per phase (更像可交付前端的狀態機)
+      if (breathCore) {
+        const p = phases[phaseIndex].name;
+        if (p === "吸气") breathCore.style.filter = "saturate(1.1)";
+        if (p === "保持") breathCore.style.filter = "saturate(.9) brightness(1.05)";
+        if (p === "呼气") breathCore.style.filter = "saturate(1) brightness(.98)";
+      }
+    }
+
+    function tick() {
+      renderBreath();
+      remain -= 1;
+      if (remain < 0) {
+        phaseIndex = (phaseIndex + 1) % phases.length;
+        remain = phases[phaseIndex].seconds;
+      }
+    }
+
+    function startBreath() {
+      if (timer) return;
+      tick();
+      timer = setInterval(tick, 1000);
+      if (breathToggle) {
+        breathToggle.innerHTML = '<i class="fa-solid fa-pause mr-1"></i>暫停';
+      }
+    }
+
+    function stopBreath() {
+      if (!timer) return;
+      clearInterval(timer);
+      timer = null;
+      if (breathToggle) {
+        breathToggle.innerHTML = '<i class="fa-solid fa-play mr-1"></i>開始';
+      }
+    }
+
+    if (breathToggle) {
+      breathToggle.addEventListener("click", () => {
+        if (timer) stopBreath();
+        else startBreath();
+      });
+    }
+    renderBreath();
+
+    // Bottom tab router + animated indicator
+    const screens = {
+      training: document.getElementById("screen-training"),
+      monitor: document.getElementById("screen-monitor"),
+      analysis: document.getElementById("screen-analysis")
+    };
+    const tabButtons = Array.from(document.querySelectorAll(".tab-btn"));
+    const tabIndicator = document.getElementById("tabIndicator");
+
+    const tabOrder = ["training", "monitor", "analysis"];
+    function setActiveTab(tab) {
+      tabOrder.forEach((t) => {
+        const el = screens[t];
+        if (!el) return;
+        el.classList.toggle("active", t === tab);
+      });
+
+      tabButtons.forEach((btn) => {
+        const isActive = btn.dataset.tab === tab;
+        btn.classList.toggle("text-white", isActive);
+        btn.classList.toggle("text-white/55", !isActive);
+      });
+
+      const idx = tabOrder.indexOf(tab);
+      if (tabIndicator && idx >= 0) {
+        tabIndicator.style.transform = `translateX(${idx * 100}%)`;
+      }
+    }
+
+    tabButtons.forEach((btn) => {
+      btn.addEventListener("click", () => setActiveTab(btn.dataset.tab));
+    });
+  </script>
+</body>
+</html>
